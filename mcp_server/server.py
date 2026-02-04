@@ -3301,6 +3301,417 @@ async def health_check():
 
 
 # ============================================================================
+# SESSION STATE MANAGEMENT ENDPOINTS
+# ============================================================================
+
+from app.core.session_state_manager import SessionStateManager, SessionState
+
+# Register MCP tools for session state management
+TOOLS["get_session_state"] = {
+    "description": "Get the current session state for a project. Returns active session info, statistics, and preferences.",
+    "inputSchema": {
+        "type": "object",
+        "properties": {
+            "project_path": {"type": "string", "description": "Absolute path to the project directory"}
+        },
+        "required": ["project_path"]
+    }
+}
+
+TOOLS["start_session"] = {
+    "description": "Start a new coding session with task context. Automatically loads relevant memories and patterns.",
+    "inputSchema": {
+        "type": "object",
+        "properties": {
+            "project_path": {"type": "string", "description": "Absolute path to the project directory"},
+            "task": {"type": "string", "description": "Description of the task/goal for this session"},
+            "branch": {"type": "string", "description": "Optional git branch name"}
+        },
+        "required": ["project_path", "task"]
+    }
+}
+
+TOOLS["end_session"] = {
+    "description": "End the current session and record summary. Updates statistics and clears active session.",
+    "inputSchema": {
+        "type": "object",
+        "properties": {
+            "project_path": {"type": "string", "description": "Absolute path to the project directory"},
+            "work_completed": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "List of work items completed during the session"
+            },
+            "memories_saved": {"type": "integer", "description": "Number of memories saved during session", "default": 0}
+        },
+        "required": ["project_path"]
+    }
+}
+
+TOOLS["add_session_blocker"] = {
+    "description": "Add a blocker to the current session for tracking.",
+    "inputSchema": {
+        "type": "object",
+        "properties": {
+            "project_path": {"type": "string", "description": "Absolute path to the project directory"},
+            "description": {"type": "string", "description": "Description of the blocker"}
+        },
+        "required": ["project_path", "description"]
+    }
+}
+
+TOOLS["add_session_pattern"] = {
+    "description": "Record a pattern discovered during the current session.",
+    "inputSchema": {
+        "type": "object",
+        "properties": {
+            "project_path": {"type": "string", "description": "Absolute path to the project directory"},
+            "description": {"type": "string", "description": "Description of the pattern discovered"}
+        },
+        "required": ["project_path", "description"]
+    }
+}
+
+TOOLS["add_session_decision"] = {
+    "description": "Record a decision made during the current session.",
+    "inputSchema": {
+        "type": "object",
+        "properties": {
+            "project_path": {"type": "string", "description": "Absolute path to the project directory"},
+            "description": {"type": "string", "description": "Description of the decision made"}
+        },
+        "required": ["project_path", "description"]
+    }
+}
+
+TOOLS["get_session_status"] = {
+    "description": "Get a summary of the current session status including duration, context, and blockers.",
+    "inputSchema": {
+        "type": "object",
+        "properties": {
+            "project_path": {"type": "string", "description": "Absolute path to the project directory"}
+        },
+        "required": ["project_path"]
+    }
+}
+
+
+class StartSessionRequest(BaseModel):
+    """Request model for starting a session."""
+    project_path: str
+    task: str
+    branch: Optional[str] = None
+
+
+class EndSessionRequest(BaseModel):
+    """Request model for ending a session."""
+    project_path: str
+    work_completed: Optional[List[str]] = None
+    memories_saved: int = 0
+
+
+class SessionItemRequest(BaseModel):
+    """Request model for adding blockers/patterns/decisions."""
+    project_path: str
+    description: str
+
+
+@app.get("/api/session/state")
+async def api_get_session_state(project_path: str):
+    """
+    REST API: Get current session state for a project.
+
+    Args:
+        project_path: Absolute path to project directory
+
+    Returns:
+        Complete session state
+    """
+    try:
+        manager = SessionStateManager(project_path)
+        state = manager.get_state()
+        return state.model_dump()
+    except ValueError as e:
+        logger.error(f"Invalid state file: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Failed to get session state: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/session/status")
+async def api_get_session_status(project_path: str):
+    """
+    REST API: Get session status summary.
+
+    Args:
+        project_path: Absolute path to project directory
+
+    Returns:
+        Session status summary
+    """
+    try:
+        manager = SessionStateManager(project_path)
+        return manager.get_status()
+    except Exception as e:
+        logger.error(f"Failed to get session status: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/session/start")
+async def api_start_session(request: StartSessionRequest):
+    """
+    REST API: Start a new session.
+
+    Args:
+        request: StartSessionRequest with project_path, task, and optional branch
+
+    Returns:
+        Session start result with loaded context
+    """
+    try:
+        manager = SessionStateManager(request.project_path)
+        result = manager.start_session(request.task, request.branch)
+
+        if not result["success"]:
+            raise HTTPException(status_code=400, detail=result["error"])
+
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to start session: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/session/end")
+async def api_end_session(request: EndSessionRequest):
+    """
+    REST API: End the current session.
+
+    Args:
+        request: EndSessionRequest with project_path and optional summary data
+
+    Returns:
+        Session end result with summary
+    """
+    try:
+        manager = SessionStateManager(request.project_path)
+        result = manager.end_session(request.work_completed, request.memories_saved)
+
+        if not result["success"]:
+            raise HTTPException(status_code=400, detail=result["error"])
+
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to end session: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/session/blocker")
+async def api_add_blocker(request: SessionItemRequest):
+    """
+    REST API: Add a blocker to the current session.
+
+    Args:
+        request: SessionItemRequest with project_path and description
+
+    Returns:
+        Updated blockers list
+    """
+    try:
+        manager = SessionStateManager(request.project_path)
+        result = manager.add_blocker(request.description)
+
+        if not result["success"]:
+            raise HTTPException(status_code=400, detail=result["error"])
+
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to add blocker: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/session/pattern")
+async def api_add_pattern(request: SessionItemRequest):
+    """
+    REST API: Add a pattern to the current session.
+
+    Args:
+        request: SessionItemRequest with project_path and description
+
+    Returns:
+        Updated patterns list
+    """
+    try:
+        manager = SessionStateManager(request.project_path)
+        result = manager.add_pattern(request.description)
+
+        if not result["success"]:
+            raise HTTPException(status_code=400, detail=result["error"])
+
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to add pattern: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/session/decision")
+async def api_add_decision(request: SessionItemRequest):
+    """
+    REST API: Add a decision to the current session.
+
+    Args:
+        request: SessionItemRequest with project_path and description
+
+    Returns:
+        Updated decisions list
+    """
+    try:
+        manager = SessionStateManager(request.project_path)
+        result = manager.add_decision(request.description)
+
+        if not result["success"]:
+            raise HTTPException(status_code=400, detail=result["error"])
+
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to add decision: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# Cross-project MCP tools
+TOOLS["list_all_sessions"] = {
+    "description": "List sessions across all projects. Useful for seeing recent work across your codebase.",
+    "inputSchema": {
+        "type": "object",
+        "properties": {
+            "limit": {"type": "integer", "description": "Maximum sessions to return", "default": 50}
+        }
+    }
+}
+
+TOOLS["list_all_blockers"] = {
+    "description": "List blockers across all projects. Shows unresolved issues that need attention.",
+    "inputSchema": {
+        "type": "object",
+        "properties": {
+            "unresolved_only": {"type": "boolean", "description": "Only show unresolved blockers", "default": True}
+        }
+    }
+}
+
+TOOLS["list_all_patterns"] = {
+    "description": "List patterns discovered across all projects. Useful for finding reusable solutions.",
+    "inputSchema": {
+        "type": "object",
+        "properties": {
+            "limit": {"type": "integer", "description": "Maximum patterns to return", "default": 100}
+        }
+    }
+}
+
+TOOLS["get_global_session_stats"] = {
+    "description": "Get aggregated session statistics across all projects.",
+    "inputSchema": {
+        "type": "object",
+        "properties": {}
+    }
+}
+
+
+@app.get("/api/sessions/all")
+async def api_list_all_sessions(limit: int = 50):
+    """
+    REST API: List sessions across all projects.
+
+    Args:
+        limit: Maximum sessions to return
+
+    Returns:
+        List of sessions with project info
+    """
+    try:
+        sessions = SessionStateManager.list_all_sessions(limit)
+        return {
+            "sessions": sessions,
+            "count": len(sessions)
+        }
+    except Exception as e:
+        logger.error(f"Failed to list all sessions: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/sessions/blockers")
+async def api_list_all_blockers(unresolved_only: bool = True):
+    """
+    REST API: List blockers across all projects.
+
+    Args:
+        unresolved_only: Only return unresolved blockers
+
+    Returns:
+        List of blockers with project info
+    """
+    try:
+        blockers = SessionStateManager.list_all_blockers(unresolved_only)
+        return {
+            "blockers": blockers,
+            "count": len(blockers),
+            "unresolved_only": unresolved_only
+        }
+    except Exception as e:
+        logger.error(f"Failed to list all blockers: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/sessions/patterns")
+async def api_list_all_patterns(limit: int = 100):
+    """
+    REST API: List patterns discovered across all projects.
+
+    Args:
+        limit: Maximum patterns to return
+
+    Returns:
+        List of patterns with project info
+    """
+    try:
+        patterns = SessionStateManager.list_all_patterns(limit)
+        return {
+            "patterns": patterns,
+            "count": len(patterns)
+        }
+    except Exception as e:
+        logger.error(f"Failed to list all patterns: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/sessions/stats/global")
+async def api_get_global_stats():
+    """
+    REST API: Get aggregated statistics across all projects.
+
+    Returns:
+        Global session statistics
+    """
+    try:
+        stats = SessionStateManager.get_global_statistics()
+        return stats
+    except Exception as e:
+        logger.error(f"Failed to get global stats: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
 # STARTUP/SHUTDOWN EVENTS
 # ============================================================================
 

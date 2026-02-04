@@ -101,3 +101,80 @@ CREATE TABLE IF NOT EXISTS project_kb_folders (
 
 CREATE INDEX IF NOT EXISTS idx_pkf_project_id ON project_kb_folders(project_id);
 CREATE INDEX IF NOT EXISTS idx_pkf_mcp_type ON project_kb_folders(mcp_type);
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- SESSION STATE MANAGEMENT
+-- ═══════════════════════════════════════════════════════════════════════════
+
+-- Sessions table - stores all session history
+CREATE TABLE IF NOT EXISTS sessions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    project_id INTEGER NOT NULL,
+    task TEXT NOT NULL,
+    branch TEXT,
+    started_at TIMESTAMP NOT NULL,
+    ended_at TIMESTAMP,
+    duration_minutes INTEGER,
+    is_active INTEGER DEFAULT 1,  -- 0 = ended, 1 = active
+    work_completed TEXT DEFAULT '[]',  -- JSON array
+    memories_saved INTEGER DEFAULT 0,
+    builtin_session_id TEXT,  -- Links to Claude Code's .jsonl session
+    metadata TEXT DEFAULT '{}',  -- JSON for extensibility
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_sessions_project_id ON sessions(project_id);
+CREATE INDEX IF NOT EXISTS idx_sessions_is_active ON sessions(is_active);
+CREATE INDEX IF NOT EXISTS idx_sessions_started_at ON sessions(started_at);
+
+-- Session items - blockers, patterns, decisions tracked during sessions
+CREATE TABLE IF NOT EXISTS session_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id INTEGER NOT NULL,
+    item_type TEXT NOT NULL,  -- 'blocker', 'pattern', 'decision', 'context'
+    description TEXT NOT NULL,
+    resolved INTEGER DEFAULT 0,  -- For blockers: 0 = unresolved, 1 = resolved
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_session_items_session_id ON session_items(session_id);
+CREATE INDEX IF NOT EXISTS idx_session_items_type ON session_items(item_type);
+
+-- Session statistics - aggregated stats per project
+CREATE TABLE IF NOT EXISTS session_statistics (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    project_id INTEGER UNIQUE NOT NULL,
+    total_sessions INTEGER DEFAULT 0,
+    total_memories_saved INTEGER DEFAULT 0,
+    total_patterns_discovered INTEGER DEFAULT 0,
+    total_insights_extracted INTEGER DEFAULT 0,
+    total_duration_minutes INTEGER DEFAULT 0,
+    average_session_duration REAL DEFAULT 0.0,
+    most_referenced_memories TEXT DEFAULT '[]',  -- JSON array
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_session_stats_project_id ON session_statistics(project_id);
+
+-- Session preferences - per-project preferences
+CREATE TABLE IF NOT EXISTS session_preferences (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    project_id INTEGER UNIQUE NOT NULL,
+    auto_search_on_start INTEGER DEFAULT 1,
+    max_memories_to_load INTEGER DEFAULT 5,
+    search_days_back INTEGER DEFAULT 14,
+    include_pattern_search INTEGER DEFAULT 1,
+    proactive_suggestions INTEGER DEFAULT 1,
+    extraction_enabled INTEGER DEFAULT 1,
+    extraction_auto_prompt INTEGER DEFAULT 1,
+    extraction_min_confidence REAL DEFAULT 0.7,
+    extraction_auto_save_high INTEGER DEFAULT 0,
+    extraction_insight_types TEXT DEFAULT '["decisions", "patterns", "solutions", "blockers"]',
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_session_prefs_project_id ON session_preferences(project_id);
