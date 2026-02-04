@@ -32,13 +32,28 @@ No questions. No ceremony. Just save it.
 
 ## How I Save
 
-I use the Claude OS API directly:
+**If active session exists**, use the session save command (tracks in session + saves to KB):
+```
+/claude-os-session save "[content]"
+```
 
-```bash
-curl -s -X POST "http://localhost:8051/api/kb/{project}-project_memories/upload" \
-  -F "title=[Generated Title]" \
-  -F "category=[Category]" \
-  -F "file=@/tmp/memory.md"
+For patterns specifically:
+```
+/claude-os-session pattern "[description]"
+```
+
+For decisions specifically:
+```
+/claude-os-session decision "[description]"
+```
+
+**If no active session**, use MCP directly:
+```
+mcp__code-forge__ingest_document
+  kb_name: {project}-project_memories
+  content: "[formatted markdown content]"
+  doc_id: "memory-{timestamp}"
+  metadata: { "category": "[Category]", "title": "[Title]" }
 ```
 
 ## Document Format

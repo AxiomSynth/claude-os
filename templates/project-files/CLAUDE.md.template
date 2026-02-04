@@ -87,11 +87,16 @@ Choice: _
    ```
    ✓ Confirm this is a Claude OS project
 
-2. **Read Configuration Files**
+2. **Read Configuration and Session State**
    ```
    Read: .claude-os/config.json
-   Read: claude-os-state.json (if exists)
    Read: agent-os/config.yml (if exists)
+   ```
+
+   **Check session state via MCP:**
+   ```
+   mcp__code-forge__get_session_status
+     project_path: {cwd}
    ```
 
 ### Phase 2: Load Git Context (5 seconds)
@@ -137,9 +142,12 @@ Query: "coding standards architecture conventions"
 
 **If agent-os/ folder exists:**
 ```
-Check: GET http://localhost:8051/api/projects/{id}/kanban
-Show: Active specs, in-progress tasks, completion percentage
+mcp__code-forge__get_kanban_status
+  project_path: {cwd}
 ```
+Show: Active specs, in-progress tasks, completion percentage
+
+(If MCP tool unavailable, check agent-os/specs/ directory directly)
 
 ### Phase 6: Present Session Summary (Display to User)
 

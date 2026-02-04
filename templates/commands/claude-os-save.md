@@ -36,21 +36,29 @@ The user ran: `/claude-os-save`
 *Saved to Claude OS - Your AI Memory System*
 ```
 
-4. **Save the file**:
-   - Create temp file: `/tmp/[sanitized_title].md`
-   - Upload using curl:
-   ```bash
-   curl -s -X POST \
-     "http://localhost:8051/api/kb/[KB_NAME]/upload" \
-     -F "file=@/tmp/[filename].md" \
-     -w "\n%{http_code}"
+4. **Save using MCP**:
+
+   **If active session exists and content is a pattern/decision:**
+   ```
+   /claude-os-session pattern "[description]"   # for patterns
+   /claude-os-session decision "[description]"  # for decisions
+   /claude-os-session save "[content]"          # for general saves
+   ```
+
+   **Otherwise, use MCP directly:**
+   ```
+   mcp__code-forge__ingest_document
+     kb_name: [KB_NAME]
+     content: [formatted markdown content]
+     doc_id: "[sanitized_title]-{timestamp}"
+     metadata: { "category": "[Category]", "title": "[Title]" }
    ```
 
 5. **Confirm success**:
    - ✅ Saved to Claude OS!
    - 📁 KB: [KB Name]
-   - 📄 File: [filename]
-   - 📦 Chunks: [number]
+   - 📄 Title: [Title]
+   - 🏷️ Category: [Category]
 
 ## Available KBs
 

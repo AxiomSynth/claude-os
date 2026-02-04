@@ -49,14 +49,21 @@ This is a **quick shorthand** for saving to `{project}-project_memories`.
 *Saved to Claude OS - Your AI Memory System*
 ```
 
-4. **Save immediately**:
-   - Create temp file: `/tmp/[sanitized_title].md`
-   - Upload to `{project}-project_memories`:
-   ```bash
-   curl -s -X POST \
-     "http://localhost:8051/api/kb/{project}-project_memories/upload" \
-     -F "file=@/tmp/[filename].md" \
-     -w "\n%{http_code}"
+4. **Save immediately using MCP**:
+
+   **If active session exists:**
+   ```
+   /claude-os-session save "[content]"
+   ```
+   This tracks in session AND saves to KB.
+
+   **If no active session, use MCP directly:**
+   ```
+   mcp__code-forge__ingest_document
+     kb_name: {project}-project_memories
+     content: [formatted markdown content]
+     doc_id: "[sanitized_title]-{timestamp}"
+     metadata: { "category": "[Category]", "title": "[Title]" }
    ```
 
 5. **Quick confirmation**:

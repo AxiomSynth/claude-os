@@ -13,9 +13,11 @@ Power-user session workflows that make me smarter with every session.
 /claude-os-session start [task]     - Start session with context loading
 /claude-os-session end              - End session with save prompts
 /claude-os-session status           - Current session status
+/claude-os-session save [note]      - Quick save to memories during session
 /claude-os-session blocker [desc]   - Track blocker
 /claude-os-session pattern [desc]   - Document pattern discovered
 /claude-os-session decision [desc]  - Record decision made
+/claude-os-session context          - Show loaded context
 ```
 
 ---
@@ -110,6 +112,11 @@ mcp__code-forge__end_session
   work_completed: ["Created sidebar navigation", "Converted panels to cards", ...]
   memories_saved: 3
 ```
+
+> **Note:** This MCP call automatically:
+> 1. Saves session to SQLite database (queryable history)
+> 2. Updates project statistics (total sessions, avg duration, etc.)
+> 3. Exports JSON snapshot to `{project}/claude-os-state.json` (git-trackable)
 
 **Step 5: Show Session Summary**
 
@@ -241,6 +248,78 @@ mcp__code-forge__add_session_decision
 
 ---
 
+## QUICK SAVE
+
+```
+/claude-os-session save "Found fix for N+1 query in appointments"
+```
+
+**Step 1: Save to knowledge base**
+```
+mcp__code-forge__ingest_document
+  kb_name: {project}-project_memories
+  content: "Found fix for N+1 query in appointments"
+  doc_id: "quick-save-{timestamp}"
+  metadata: { "type": "quick_save", "session_task": "{current_task}" }
+```
+
+**Step 2: Track in session**
+```
+mcp__code-forge__add_session_decision
+  project_path: {cwd}
+  description: "Saved memory: Found fix for N+1 query..."
+```
+
+**Response:**
+```
+✓ Saved to {project}-project_memories
+  I'll remember this for future reference!
+```
+
+---
+
+## SHOW CONTEXT
+
+```
+/claude-os-session context
+```
+
+**Step 1: Get session state**
+```
+mcp__code-forge__get_session_state
+  project_path: {cwd}
+```
+
+**Step 2: Display loaded context**
+
+```
+═══════════════════════════════════════
+📚 SESSION CONTEXT
+═══════════════════════════════════════
+
+📂 Project: sieve-calendar
+🎯 Task: SIE-20: Enrich error messaging
+
+📖 LOADED MEMORIES (5):
+  • Error handling patterns (Oct 28)
+  • API response structure (Oct 25)
+  • User feedback guidelines (Oct 20)
+
+💡 PATTERNS AVAILABLE:
+  • Service object error returns
+  • Flash message formatting
+
+🤔 DECISIONS THIS SESSION:
+  • Use CSS Grid for layout
+  • Standardize error codes
+
+⚠️  BLOCKERS:
+  None ✓
+═══════════════════════════════════════
+```
+
+---
+
 ## CROSS-PROJECT QUERIES
 
 These work without an active session:
@@ -273,14 +352,16 @@ mcp__code-forge__get_global_session_stats
 ## DATA STORAGE
 
 **Primary:** SQLite database (`data/claude-os.db`)
-- Full session history
+- Full session history (all sessions, all projects)
 - Queryable across projects
 - Statistics and preferences
+- Updated in real-time by all MCP tools
 
 **Secondary:** JSON export (`{project}/claude-os-state.json`)
-- Auto-exported on session end
-- Git-trackable snapshot
-- Contains last session summary + stats
+- **Automatically exported** when `end_session` is called
+- Git-trackable snapshot (commit with your project)
+- Contains: last session summary, cumulative stats, preferences
+- No manual action required - handled by the MCP server
 
 ---
 
@@ -295,6 +376,7 @@ mcp__code-forge__get_global_session_stats
 | `add_session_blocker` | Track blocker |
 | `add_session_pattern` | Record pattern |
 | `add_session_decision` | Record decision |
+| `ingest_document` | Save to knowledge base (used by `save`) |
 | `list_all_sessions` | Sessions across projects |
 | `list_all_blockers` | Blockers across projects |
 | `list_all_patterns` | Patterns across projects |
