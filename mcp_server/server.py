@@ -3109,6 +3109,48 @@ async def handle_mcp_request(request: Request, kb_filter: Optional[str] = None) 
                     result = await get_specs(**arguments)
                 elif tool_name == "get_product_context":
                     result = await get_product_context(**arguments)
+                # Session state management tools
+                elif tool_name == "start_session":
+                    manager = SessionStateManager(arguments["project_path"])
+                    result = manager.start_session(
+                        arguments["task"],
+                        arguments.get("branch")
+                    )
+                elif tool_name == "end_session":
+                    manager = SessionStateManager(arguments["project_path"])
+                    result = manager.end_session(
+                        arguments.get("work_completed"),
+                        arguments.get("memories_saved", 0)
+                    )
+                elif tool_name == "get_session_state":
+                    manager = SessionStateManager(arguments["project_path"])
+                    result = manager.get_state().model_dump()
+                elif tool_name == "get_session_status":
+                    manager = SessionStateManager(arguments["project_path"])
+                    result = manager.get_status()
+                elif tool_name == "add_session_blocker":
+                    manager = SessionStateManager(arguments["project_path"])
+                    result = manager.add_blocker(arguments["description"])
+                elif tool_name == "add_session_pattern":
+                    manager = SessionStateManager(arguments["project_path"])
+                    result = manager.add_pattern(arguments["description"])
+                elif tool_name == "add_session_decision":
+                    manager = SessionStateManager(arguments["project_path"])
+                    result = manager.add_decision(arguments["description"])
+                elif tool_name == "list_all_sessions":
+                    result = SessionStateManager.list_all_sessions(
+                        arguments.get("limit", 50)
+                    )
+                elif tool_name == "list_all_blockers":
+                    result = SessionStateManager.list_all_blockers(
+                        arguments.get("unresolved_only", True)
+                    )
+                elif tool_name == "list_all_patterns":
+                    result = SessionStateManager.list_all_patterns(
+                        arguments.get("limit", 100)
+                    )
+                elif tool_name == "get_global_session_stats":
+                    result = SessionStateManager.get_global_statistics()
                 else:
                     return JSONResponse({
                         "jsonrpc": "2.0",

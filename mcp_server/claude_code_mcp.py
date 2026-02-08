@@ -398,6 +398,134 @@ async def list_tools() -> list[Tool]:
                 },
                 "required": ["name", "project_path"]
             }
+        ),
+
+        # Session State Management Tools
+        Tool(
+            name="start_session",
+            description="Start a new coding session with task context. Automatically loads relevant memories and patterns.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "project_path": {"type": "string", "description": "Absolute path to the project directory"},
+                    "task": {"type": "string", "description": "Description of the task/goal for this session"},
+                    "branch": {"type": "string", "description": "Git branch name (optional)"}
+                },
+                "required": ["project_path", "task"]
+            }
+        ),
+        Tool(
+            name="end_session",
+            description="End the current session and save summary. Exports session state to JSON for git tracking.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "project_path": {"type": "string", "description": "Absolute path to the project directory"},
+                    "work_completed": {"type": "array", "items": {"type": "string"}, "description": "List of completed work items"},
+                    "memories_saved": {"type": "integer", "description": "Number of memories saved this session"}
+                },
+                "required": ["project_path"]
+            }
+        ),
+        Tool(
+            name="get_session_state",
+            description="Get the full session state including current session, last session, blockers, patterns, decisions, and preferences.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "project_path": {"type": "string", "description": "Absolute path to the project directory"}
+                },
+                "required": ["project_path"]
+            }
+        ),
+        Tool(
+            name="get_session_status",
+            description="Get a brief status of the current session (active/inactive, duration, task).",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "project_path": {"type": "string", "description": "Absolute path to the project directory"}
+                },
+                "required": ["project_path"]
+            }
+        ),
+        Tool(
+            name="add_session_blocker",
+            description="Record a blocker encountered during the session.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "project_path": {"type": "string", "description": "Absolute path to the project directory"},
+                    "description": {"type": "string", "description": "Description of the blocker"}
+                },
+                "required": ["project_path", "description"]
+            }
+        ),
+        Tool(
+            name="add_session_pattern",
+            description="Record a pattern or best practice discovered during the session.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "project_path": {"type": "string", "description": "Absolute path to the project directory"},
+                    "description": {"type": "string", "description": "Description of the pattern"}
+                },
+                "required": ["project_path", "description"]
+            }
+        ),
+        Tool(
+            name="add_session_decision",
+            description="Record an architectural or design decision made during the session.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "project_path": {"type": "string", "description": "Absolute path to the project directory"},
+                    "description": {"type": "string", "description": "Description of the decision"}
+                },
+                "required": ["project_path", "description"]
+            }
+        ),
+        Tool(
+            name="list_all_sessions",
+            description="List sessions across all projects.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "limit": {"type": "integer", "default": 50, "description": "Maximum sessions to return"}
+                },
+                "required": []
+            }
+        ),
+        Tool(
+            name="list_all_blockers",
+            description="List blockers across all projects.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "unresolved_only": {"type": "boolean", "default": True, "description": "Only show unresolved blockers"}
+                },
+                "required": []
+            }
+        ),
+        Tool(
+            name="list_all_patterns",
+            description="List patterns across all projects.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "limit": {"type": "integer", "default": 100, "description": "Maximum patterns to return"}
+                },
+                "required": []
+            }
+        ),
+        Tool(
+            name="get_global_session_stats",
+            description="Get aggregated session statistics across all projects.",
+            inputSchema={
+                "type": "object",
+                "properties": {},
+                "required": []
+            }
         )
     ]
 
@@ -478,14 +606,17 @@ async def _execute_tool(name: str, args: dict[str, Any]) -> dict:
 
     # Document Management
     elif name == "upload_document":
-        return await api_post(f"/api/kb/{args['kb_name']}/import", {
-            "content": args["content"],
-            "filename": args["filename"],
-            "metadata": {
-                "title": args.get("title", ""),
-                "tags": args.get("tags", [])
-            }
-        })
+        # Send content as multipart file upload to the /upload endpoint
+        content_bytes = args["content"].encode("utf-8")
+        filename = args["filename"]
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                api_url(f"/api/kb/{args['kb_name']}/upload"),
+                files={"file": (filename, content_bytes, "text/markdown")},
+                timeout=60.0
+            )
+            response.raise_for_status()
+            return response.json()
 
     elif name == "delete_document":
         return await api_delete(f"/api/kb/{args['kb_name']}/documents/{args['filename']}")
@@ -564,6 +695,57 @@ async def _execute_tool(name: str, args: dict[str, Any]) -> dict:
 
     elif name == "delete_skill":
         return await api_delete(f"/api/skills/{args['name']}?project_path={args['project_path']}")
+
+    # Session State Management Tools
+    elif name == "start_session":
+        return await api_post("/api/session/start", {
+            "project_path": args["project_path"],
+            "task": args["task"],
+            "branch": args.get("branch")
+        })
+
+    elif name == "end_session":
+        return await api_post("/api/session/end", {
+            "project_path": args["project_path"],
+            "work_completed": args.get("work_completed"),
+            "memories_saved": args.get("memories_saved", 0)
+        })
+
+    elif name == "get_session_state":
+        return await api_get(f"/api/session/state?project_path={args['project_path']}")
+
+    elif name == "get_session_status":
+        return await api_get(f"/api/session/status?project_path={args['project_path']}")
+
+    elif name == "add_session_blocker":
+        return await api_post("/api/session/blocker", {
+            "project_path": args["project_path"],
+            "description": args["description"]
+        })
+
+    elif name == "add_session_pattern":
+        return await api_post("/api/session/pattern", {
+            "project_path": args["project_path"],
+            "description": args["description"]
+        })
+
+    elif name == "add_session_decision":
+        return await api_post("/api/session/decision", {
+            "project_path": args["project_path"],
+            "description": args["description"]
+        })
+
+    elif name == "list_all_sessions":
+        return await api_get(f"/api/sessions/all?limit={args.get('limit', 50)}")
+
+    elif name == "list_all_blockers":
+        return await api_get(f"/api/sessions/blockers?unresolved_only={args.get('unresolved_only', True)}")
+
+    elif name == "list_all_patterns":
+        return await api_get(f"/api/sessions/patterns?limit={args.get('limit', 100)}")
+
+    elif name == "get_global_session_stats":
+        return await api_get("/api/sessions/stats/global")
 
     else:
         return {"error": f"Unknown tool: {name}"}
