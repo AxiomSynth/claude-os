@@ -68,6 +68,10 @@ Claude OS provides MCP tools (prefixed with `mcp__code-forge__`) for managing kn
 | `mcp__code-forge__create_knowledge_base` | Create a new KB |
 | `mcp__code-forge__get_kb_stats` | Get statistics for a KB |
 | `mcp__code-forge__list_documents` | List documents in a KB |
+| `mcp__code-forge__kb_lifecycle_health` | KB health report with recommendations |
+| `mcp__code-forge__kb_lifecycle_dedup` | Scan/merge duplicate documents |
+| `mcp__code-forge__kb_lifecycle_consolidate` | LLM-powered document merging |
+| `mcp__code-forge__kb_lifecycle_archive` | Archive, restore, list, find stale |
 
 ### Knowledge Base Types
 
@@ -99,6 +103,7 @@ These commands are installed to `~/.claude/commands/` via the install script:
 | `/claude-os-remember` | Quick save to memories |
 | `/claude-os-save` | Full-featured save with KB selection |
 | `/claude-os-list` | List KBs or documents |
+| `/claude-os-lifecycle` | KB health, dedup, consolidate, archive |
 | `/claude-os-triggers` | Manage automatic triggers |
 
 ### Session Commands (Most Important!)
@@ -110,6 +115,16 @@ These commands are installed to `~/.claude/commands/` via the install script:
 /claude-os-session save [note]      - Quick save during session
 /claude-os-session blocker [desc]   - Track blocker
 /claude-os-session pattern [desc]   - Document pattern discovered
+```
+
+### Lifecycle Commands
+
+```
+/claude-os-lifecycle health [kb_name]       - Health report with recommendations
+/claude-os-lifecycle dedup [kb_name]        - Scan and merge duplicate documents
+/claude-os-lifecycle consolidate [kb_name]  - LLM-powered document merging
+/claude-os-lifecycle archive [kb_name]      - Find stale docs, archive/restore
+/claude-os-lifecycle logs [kb_name]         - Operation history
 ```
 
 ---
@@ -137,6 +152,7 @@ These commands are installed to `~/.claude/commands/` via the install script:
 - `mcp_server/server.py` - FastAPI REST API
 - `app/core/rag_engine.py` - RAG query engine
 - `app/core/sqlite_manager.py` - SQLite + sqlite-vec for vector storage
+- `app/core/knowledge_lifecycle.py` - KB lifecycle engine (dedup, archive, consolidate)
 - `templates/` - Commands, skills, and agents
 
 ---
