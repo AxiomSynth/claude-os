@@ -7,6 +7,13 @@ description: Knowledge base lifecycle management - dedup, consolidate, archive, 
 
 Manage the health and lifecycle of your knowledge bases: find duplicates, consolidate related docs, archive stale content, and get health reports.
 
+## Project Name Resolution
+
+Before using KB names below, resolve `{project}`:
+1. Read `{cwd}/claude-os-state.json` — use the `project_name` field
+2. If no state file, call `mcp__code-forge__list_knowledge_bases` and find the KB ending in `-project_memories` (strip the suffix)
+3. Fallback: use the directory name
+
 ## Commands
 
 ```

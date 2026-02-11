@@ -7,6 +7,13 @@ description: Manage Claude OS trigger phrases and automatic skill invocation
 
 Manage trigger phrases that automatically invoke skills and workflows.
 
+## Project Name Resolution
+
+Before using KB names below, resolve `{project}`:
+1. Read `{cwd}/claude-os-state.json` — use the `project_name` field
+2. If no state file, call `mcp__code-forge__list_knowledge_bases` and find the KB ending in `-project_memories` (strip the suffix)
+3. Fallback: use the directory name
+
 ## Setup
 
 First, derive `{claude_os_dir}` from this command file's path - it is two directories up from this file's location.

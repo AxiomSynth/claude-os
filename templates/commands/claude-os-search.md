@@ -8,6 +8,13 @@ The user ran: `/claude-os-search [query]`
 
 ## Your Task
 
+## Project Name Resolution
+
+Before using KB names below, resolve `{project}`:
+1. Read `{cwd}/claude-os-state.json` — use the `project_name` field
+2. If no state file, call `mcp__code-forge__list_knowledge_bases` and find the KB ending in `-project_memories` (strip the suffix)
+3. Fallback: use the directory name
+
 1. **Parse the query**:
    - Extract search terms from the command
    - Identify if user specified a KB name (e.g., "search myapp-project_memories for auth patterns")

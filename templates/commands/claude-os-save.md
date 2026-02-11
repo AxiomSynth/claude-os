@@ -8,6 +8,13 @@ The user ran: `/claude-os-save`
 
 ## Your Task
 
+## Project Name Resolution
+
+Before using KB names below, resolve `{project}`:
+1. Read `{cwd}/claude-os-state.json` — use the `project_name` field
+2. If no state file, call `mcp__code-forge__list_knowledge_bases` and find the KB ending in `-project_memories` (strip the suffix)
+3. Fallback: use the directory name
+
 1. **Determine what to save**:
    - Look at recent conversation context
    - If user specified content after the command, use that

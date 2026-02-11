@@ -8,6 +8,13 @@ The user ran: `/claude-os-list [optional: KB name]`
 
 ## Your Task
 
+## Project Name Resolution
+
+Before using KB names below, resolve `{project}`:
+1. Read `{cwd}/claude-os-state.json` — use the `project_name` field
+2. If no state file, call `mcp__code-forge__list_knowledge_bases` and find the KB ending in `-project_memories` (strip the suffix)
+3. Fallback: use the directory name
+
 ### If no KB name specified:
 
 1. **List all available KBs**:
