@@ -59,11 +59,12 @@ This is a **quick shorthand** for saving to `{project}-project_memories`.
 
    **If no active session, use MCP directly:**
    ```
-   mcp__code-forge__ingest_document
+   mcp__code-forge__upload_document
      kb_name: {project}-project_memories
      content: [formatted markdown content]
-     doc_id: "[sanitized_title]-{timestamp}"
-     metadata: { "category": "[Category]", "title": "[Title]" }
+     filename: "[sanitized_title]-{timestamp}.md"
+     title: "[Title]"
+     tags: ["[Category]"]
    ```
 
 5. **Quick confirmation**:

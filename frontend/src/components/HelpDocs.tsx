@@ -190,7 +190,7 @@ export default function HelpDocs() {
             <code className="text-electric-teal">delete_knowledge_base</code>
           </div>
           <div className="p-3 bg-cool-blue/10 rounded border border-electric-teal/20">
-            <code className="text-electric-teal">ingest_document</code>
+            <code className="text-electric-teal">upload_document</code>
           </div>
           <div className="p-3 bg-cool-blue/10 rounded border border-electric-teal/20">
             <code className="text-electric-teal">ingest_directory</code>

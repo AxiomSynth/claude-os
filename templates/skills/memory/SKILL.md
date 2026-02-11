@@ -49,11 +49,12 @@ For decisions specifically:
 
 **If no active session**, use MCP directly:
 ```
-mcp__code-forge__ingest_document
+mcp__code-forge__upload_document
   kb_name: {project}-project_memories
   content: "[formatted markdown content]"
-  doc_id: "memory-{timestamp}"
-  metadata: { "category": "[Category]", "title": "[Title]" }
+  filename: "memory-{timestamp}.md"
+  title: "[Title]"
+  tags: ["[Category]"]
 ```
 
 ## Document Format

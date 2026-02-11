@@ -47,11 +47,12 @@ The user ran: `/claude-os-save`
 
    **Otherwise, use MCP directly:**
    ```
-   mcp__code-forge__ingest_document
+   mcp__code-forge__upload_document
      kb_name: [KB_NAME]
      content: [formatted markdown content]
-     doc_id: "[sanitized_title]-{timestamp}"
-     metadata: { "category": "[Category]", "title": "[Title]" }
+     filename: "[sanitized_title]-{timestamp}.md"
+     title: "[Title]"
+     tags: ["[Category]"]
    ```
 
 5. **Confirm success**:

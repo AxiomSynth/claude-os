@@ -256,11 +256,12 @@ mcp__code-forge__add_session_decision
 
 **Step 1: Save to knowledge base**
 ```
-mcp__code-forge__ingest_document
+mcp__code-forge__upload_document
   kb_name: {project}-project_memories
   content: "Found fix for N+1 query in appointments"
-  doc_id: "quick-save-{timestamp}"
-  metadata: { "type": "quick_save", "session_task": "{current_task}" }
+  filename: "quick-save-{timestamp}.md"
+  title: "Quick save: Found fix for N+1 query..."
+  tags: ["quick_save"]
 ```
 
 **Step 2: Track in session**
@@ -376,7 +377,7 @@ mcp__code-forge__get_global_session_stats
 | `add_session_blocker` | Track blocker |
 | `add_session_pattern` | Record pattern |
 | `add_session_decision` | Record decision |
-| `ingest_document` | Save to knowledge base (used by `save`) |
+| `upload_document` | Save to knowledge base (used by `save`) |
 | `list_all_sessions` | Sessions across projects |
 | `list_all_blockers` | Blockers across projects |
 | `list_all_patterns` | Patterns across projects |
