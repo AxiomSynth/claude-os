@@ -31,6 +31,9 @@ import time
 from pathlib import Path
 from typing import Any
 
+# Add project root to path so we can import app.core modules directly
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import httpx
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
