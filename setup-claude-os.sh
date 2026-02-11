@@ -971,6 +971,22 @@ setup_claude_integration() {
     done
     success "Linked ${skill_count} skills"
 
+    # Symlink scripts
+    mkdir -p "${USER_CLAUDE_DIR}/scripts"
+    local script_count=0
+    for script_file in "${CLAUDE_OS_DIR}"/scripts/claude-os-*.sh; do
+        if [[ -f "$script_file" ]]; then
+            local script_name=$(basename "$script_file")
+            local dest="${USER_CLAUDE_DIR}/scripts/${script_name}"
+            rm -f "$dest" 2>/dev/null
+            ln -s "$script_file" "$dest"
+            script_count=$((script_count + 1))
+        fi
+    done
+    if [[ $script_count -gt 0 ]]; then
+        success "Linked ${script_count} scripts"
+    fi
+
     # NOTE: MCP server is configured per-project when running /claude-os-init
     # Claude Code stores MCP configs in ~/.claude.json per-project, not in settings.json
     # The /claude-os-init command runs: claude mcp add --transport stdio code-forge ...
