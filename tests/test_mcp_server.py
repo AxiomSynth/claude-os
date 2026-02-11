@@ -262,7 +262,7 @@ class TestMCPServerDocumentOperations:
 
     @pytest.mark.asyncio
     async def test_upload_document_sends_correct_payload(self, mock_httpx):
-        """Test that upload_document sends the correct payload."""
+        """Test that upload_document sends multipart file upload."""
         mock_response = MagicMock()
         mock_response.json.return_value = {"success": True}
         mock_response.raise_for_status = MagicMock()
@@ -284,11 +284,13 @@ class TestMCPServerDocumentOperations:
 
         mock_client.post.assert_called_once()
         call_args = mock_client.post.call_args
-        payload = call_args.kwargs.get("json", {})
-
-        assert payload.get("content") == "# Test Document\n\nThis is a test."
-        assert payload.get("filename") == "test.md"
-        assert payload.get("metadata", {}).get("title") == "Test Document"
+        # Our implementation uses multipart file upload to /upload endpoint
+        assert "/api/kb/test_kb/upload" in str(call_args)
+        assert "files" in call_args.kwargs
+        file_tuple = call_args.kwargs["files"]["file"]
+        assert file_tuple[0] == "test.md"  # filename
+        assert file_tuple[1] == b"# Test Document\n\nThis is a test."  # content bytes
+        assert file_tuple[2] == "text/markdown"  # content type
 
     @pytest.mark.asyncio
     async def test_delete_document_calls_correct_endpoint(self, mock_httpx):
