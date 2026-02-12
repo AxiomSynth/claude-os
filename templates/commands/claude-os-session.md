@@ -47,7 +47,6 @@ mcp__code-forge__start_session
 ```
 mcp__code-forge__search_all_knowledge_bases
   query: "{task} recent work"
-  kb_filter: "{project_name}-"
 ```
 
 **Step 3: Get Git Context**
@@ -197,7 +196,6 @@ mcp__code-forge__get_session_status
 ```
 mcp__code-forge__search_all_knowledge_bases
   query: "{current_task}"
-  kb_filter: "{project_name}-"
 ```
 
 **Step 3: Display loaded context**
