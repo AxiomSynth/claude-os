@@ -11,9 +11,14 @@ The user ran: `/claude-os-remember [optional: content]`
 ## Project Name Resolution
 
 Before using KB names below, resolve `{project}`:
-1. Read `{cwd}/claude-os-state.json` — use the `project_name` field
-2. If no state file, call `mcp__code-forge__list_knowledge_bases` and find the KB ending in `-project_memories` (strip the suffix)
-3. Fallback: use the directory name
+1. Detect from path: if cwd contains "sieve" → project = "Sieve", if "prakasha" → project = "Prakasha"
+2. If no match, resolve the main repo root:
+   ```bash
+   MAIN_REPO=$(git worktree list --porcelain | head -1 | sed 's/^worktree //')
+   ```
+   Check if $MAIN_REPO path contains "sieve" or "prakasha"
+3. If still no match, read `{cwd}/claude-os-state.json` → `project_name` field, or `$MAIN_REPO/claude-os-state.json`
+4. Last resort: call `mcp__code-forge__list_knowledge_bases` and find KBs ending in `-project_memories`
 
 This is a **quick shorthand** for saving to `{project}-project_memories`.
 
@@ -70,8 +75,6 @@ This is a **quick shorthand** for saving to `{project}-project_memories`.
      kb_name: {project}-project_memories
      content: [formatted markdown content]
      filename: "[sanitized_title]-{timestamp}.md"
-     title: "[Title]"
-     tags: ["[Category]"]
    ```
 
 5. **Quick confirmation**:
