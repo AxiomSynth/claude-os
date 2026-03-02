@@ -899,9 +899,26 @@ async def api_index_structural(kb_name: str, request: StructuralIndexRequest):
     if not db_manager.collection_exists(kb_name):
         raise HTTPException(status_code=404, detail=f"Knowledge base '{kb_name}' not found")
 
+    # Guard: curated KBs should not be directory-indexed
+    CURATED_KB_PATTERNS = {"global-patterns"}
+    CURATED_KB_SUFFIXES = ("_memories",)
+    if kb_name in CURATED_KB_PATTERNS or any(kb_name.endswith(s) for s in CURATED_KB_SUFFIXES):
+        raise HTTPException(
+            status_code=400,
+            detail=f"KB '{kb_name}' is curated — use upload_document instead of index-structural"
+        )
+
     # Validate project path
     if not Path(request.project_path).exists():
         raise HTTPException(status_code=404, detail=f"Project path not found: {request.project_path}")
+
+    # Guard: reject home directory as project_path
+    resolved_path = Path(request.project_path).resolve()
+    if resolved_path == Path.home():
+        raise HTTPException(
+            status_code=400,
+            detail="project_path is the home directory — too broad for indexing. Use a specific project path."
+        )
 
     try:
         logger.info(f"Starting structural indexing for {kb_name} at {request.project_path}")
@@ -994,7 +1011,7 @@ def _run_semantic_indexing_background(job_id: str, kb_name: str, project_path: s
     Updates INDEXING_JOBS with progress.
     """
     from app.core.tree_sitter_indexer import TreeSitterIndexer
-    from app.core.ingestion import ingest_directory, ingest_file
+    from app.core.ingestion import ingest_directory, ingest_file, should_skip_path
 
     def update_job(status: str, progress: int = 0, message: str = "", error: str = None):
         with INDEXING_JOBS_LOCK:
@@ -1027,11 +1044,13 @@ def _run_semantic_indexing_background(job_id: str, kb_name: str, project_path: s
             important_tags = repo_map.tags[:top_20_percent]
             important_files = list(set(tag.file for tag in important_tags))
 
-            # Add all documentation files
+            # Add documentation files (respecting skip directories)
             docs_patterns = ["*.md", "*.txt", "*.rst"]
             doc_files = []
             for pattern in docs_patterns:
-                doc_files.extend(Path(project_path).rglob(pattern))
+                for f in Path(project_path).rglob(pattern):
+                    if not should_skip_path(f):
+                        doc_files.append(f)
 
             all_files = list(set(important_files + [str(f.relative_to(project_path)) for f in doc_files]))
             total_files = len(all_files)
@@ -1085,7 +1104,7 @@ def _run_semantic_indexing_sync(kb_name: str, project_path: str, selective: bool
     Returns the final result dict.
     """
     from app.core.tree_sitter_indexer import TreeSitterIndexer
-    from app.core.ingestion import ingest_directory, ingest_file
+    from app.core.ingestion import ingest_directory, ingest_file, should_skip_path
 
     start_time = time.time()
 
@@ -1102,7 +1121,9 @@ def _run_semantic_indexing_sync(kb_name: str, project_path: str, selective: bool
         docs_patterns = ["*.md", "*.txt", "*.rst"]
         doc_files = []
         for pattern in docs_patterns:
-            doc_files.extend(Path(project_path).rglob(pattern))
+            for f in Path(project_path).rglob(pattern):
+                if not should_skip_path(f):
+                    doc_files.append(f)
 
         all_files = list(set(important_files + [str(f.relative_to(project_path)) for f in doc_files]))
 
@@ -1162,9 +1183,27 @@ async def api_index_semantic(kb_name: str, request: SemanticIndexRequest, backgr
     if not db_manager.collection_exists(kb_name):
         raise HTTPException(status_code=404, detail=f"Knowledge base '{kb_name}' not found")
 
+    # Guard: curated KBs should not be directory-indexed
+    # These KBs are populated via upload_document only, not bulk crawling
+    CURATED_KB_PATTERNS = {"global-patterns"}
+    CURATED_KB_SUFFIXES = ("_memories",)
+    if kb_name in CURATED_KB_PATTERNS or any(kb_name.endswith(s) for s in CURATED_KB_SUFFIXES):
+        raise HTTPException(
+            status_code=400,
+            detail=f"KB '{kb_name}' is curated — use upload_document instead of index-semantic"
+        )
+
     # Validate project path
     if not Path(request.project_path).exists():
         raise HTTPException(status_code=404, detail=f"Project path not found: {request.project_path}")
+
+    # Guard: reject home directory as project_path (too broad, will crawl everything)
+    resolved_path = Path(request.project_path).resolve()
+    if resolved_path == Path.home():
+        raise HTTPException(
+            status_code=400,
+            detail="project_path is the home directory — too broad for indexing. Use a specific project path."
+        )
 
     # Cleanup old jobs periodically
     _cleanup_old_jobs()
